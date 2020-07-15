@@ -1,0 +1,39 @@
+analysis:
+    repos:
+    - xarray-contrib/cf-xarray
+    url: https://github.com/NCAR/xdev/projects/6
+checkpoint:
+    repos:
+    - NCAR/xpersist
+    url: https://github.com/NCAR/xdev/projects/7
+core:
+    repos:
+    - NCAR/xdev
+    - NCAR/xdevbot
+    - NCAR/xdev-docker-images
+    url: https://github.com/NCAR/xdev/projects/2
+eocb:
+    repos:
+    - NCAR/python-tutorial
+    - NCAR/ncar-python-tutorial
+    - NCAR/notebook-gallery
+    url: https://github.com/NCAR/xdev/projects/3
+ingestion:
+    repos:
+    - intake/intake-esm
+    - NCAR/intake-thredds
+    - NCAR/esm-collection-spec
+    - NCAR/intake-esm-datastore
+    url: https://github.com/NCAR/xdev/projects/5
+platform:
+    repos:
+    - NCAR/jupyter-forward
+    - NCAR/ncar-jobqueue
+    url: https://github.com/NCAR/xdev/projects/9
+publication:
+    repos:
+    - NCAR/ncar-aws-binder
+    url: https://github.com/NCAR/xdev/projects/8
+search:
+    repos: null
+    url: https://github.com/NCAR/xdev/projects/4
