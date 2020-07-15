@@ -1,6 +1,7 @@
 analysis:
     repos:
     - xarray-contrib/cf-xarray
+    - NCAR/integral
     url: https://github.com/NCAR/xdev/projects/6
 checkpoint:
     repos:
