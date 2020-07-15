@@ -23,7 +23,8 @@ jobs:
 
       - name: Pushing up-to-date config file
         run: |
-          git config --global user.email "action@github.com
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action"
           git add config.yaml && git commit -m "[skip ci] Update configuration file."
           git push -f --set-upstream origin master
 
