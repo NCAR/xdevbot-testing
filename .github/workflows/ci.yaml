@@ -3,7 +3,6 @@ on:
   issues:
     types:
       - opened
-      - edited
       - reopened
 
 jobs:
@@ -23,14 +22,20 @@ jobs:
           python .github/workflows/register_repo.py
 
       - name: Pushing up-to-date config file
+        run: |
+          git config --global user.email "action@github.com
+          git add config.yaml && git commit -m "[skip ci] Update configuration file."
+          git push -f --set-upstream origin master
+
+      - name: Send a reply message to the issue
         uses: actions/github-script@0.9.0
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs')
             const payload = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'))
-            const repo_and_campaign = payload.issue.body.split('/add-repo')
-            const issue_reply = `👋 Added  ${repo_and_campaign} to the configuration file!`
+            const repo_and_campaign = payload.issue.body.split('/add-repo')[1].trim()
+            const issue_reply = `👋 Added ${repo_and_campaign} to the configuration file! Check the master branch for latest changes.`
             // Send a reply message to the issue
             github.issues.createComment({
               issue_number: context.issue.number,
@@ -38,8 +43,3 @@ jobs:
               repo: context.repo.repo,
               body: issue_reply
             })
-
-
-      
-
-      
