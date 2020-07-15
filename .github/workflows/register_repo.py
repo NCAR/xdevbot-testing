@@ -1,18 +1,15 @@
-import yaml
+import ruamel.yaml as yaml
 import requests
 import os
 import sys
 import json
+import copy
 
-if __name__ == "__main__":
-    with open(os.environ["GITHUB_EVENT_PATH"], "r") as f:
-        event_payload = json.load(f)
-    comment = event_payload["issue"]["body"]
-    if comment.startswith("/add-repo"):
-        config_file = "config.yaml"
-        with open(config_file) as resp:
-            config = yaml.safe_load(resp)
-        parsed_info = comment.split("/add-repo")[-1].strip().split()
+
+def register_repo(line, original_config):
+    config = copy.deepcopy(original_config)
+    if line.startswith("/add-repo"):
+        parsed_info = line.split("/add-repo")[-1].strip().split()
         info = {}
         for item in parsed_info:
             x = item.strip().split(":")
@@ -27,12 +24,25 @@ if __name__ == "__main__":
 
         if info["repo"] not in set(config[info["campaign"]]["repos"]):
             config[info["campaign"]]["repos"].append(info["repo"])
-            with open(config_file, "w") as file_obj:
-                yaml.dump(config, file_obj, indent=4)
 
-        else:
-            print(f"{info['repo']} is registered already.")
+    return config
 
-    else:
-        sys.exit(1)
 
+if __name__ == "__main__":
+
+    config_file = "config.yaml"
+    with open(config_file) as resp:
+        original_config = yaml.safe_load(resp)
+
+    with open(os.environ["GITHUB_EVENT_PATH"], "r") as f:
+        event_payload = json.load(f)
+    comment = event_payload["issue"]["body"]
+    # comment = "Foo\n/add-repo repo:NCAR/integral campaign:analysis\n/add-repo repo:NCAR/test campaign:core\nbar"
+    comment = comment.splitlines()
+    config = copy.deepcopy(original_config)
+    for line in comment:
+        config = register_repo(line, config)
+
+    if config != original_config:
+        with open(config_file, "w") as file_obj:
+            yaml.round_trip_dump(config, file_obj, indent=4, block_seq_indent=4)
