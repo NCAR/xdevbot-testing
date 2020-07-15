@@ -29,7 +29,7 @@ jobs:
             const fs = require('fs')
             const payload = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'))
             const repo_and_campaign = payload.issue.body.split('/add-repo')
-            const issue_reply = `👋 Added  ${const repo_and_campaign} to the configuration file!`
+            const issue_reply = `👋 Added  ${repo_and_campaign} to the configuration file!`
             // Send a reply message to the issue
             github.issues.createComment({
               issue_number: context.issue.number,
