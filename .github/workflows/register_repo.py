@@ -2,15 +2,14 @@ import yaml
 import requests
 import os
 import sys
+import json
 
 # import subprocess
 
 if __name__ == "__main__":
     with open(os.environ["GITHUB_EVENT_PATH"], "r") as f:
         event_payload = json.load(f)
-
     comment = event_payload["issue"]["body"]
-    comment = "/add-repo repo:NCAR/test campaign:core"
     if comment.startswith("/add-repo"):
         config_file = "config.yaml"
         with open(config_file) as resp:
