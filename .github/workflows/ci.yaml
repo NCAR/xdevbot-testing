@@ -43,7 +43,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs')
-            const payload = fs.readFileSync('config.diff', 'utf8'))
+            const payload = fs.readFileSync('config.diff', 'utf8')
             // const issue_reply = `👋 Added ${repo_and_campaign} to the configuration file! Check the master branch for latest changes.`
             const issue_reply = `Changes made:\n```bash\n${payload}``` `
             // Send a reply message to the issue
