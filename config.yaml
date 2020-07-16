@@ -1,7 +1,6 @@
 analysis:
   repos:
     - xarray-contrib/cf-xarray
-    - NCAR/integral
   url: https://github.com/NCAR/xdev/projects/6
 checkpoint:
   repos:
@@ -30,7 +29,6 @@ platform:
   repos:
     - NCAR/jupyter-forward
     - NCAR/ncar-jobqueue
-    - NCAR/jupyterlab-pbs
   url: https://github.com/NCAR/xdev/projects/9
 publication:
   repos:
