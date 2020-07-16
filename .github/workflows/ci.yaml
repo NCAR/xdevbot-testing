@@ -23,8 +23,10 @@ jobs:
 
       - name: Capture diff output
         id: diff 
+        shell: bash
         run: |
           output=$(git --no-pager diff config.yaml)
+          echo $output
           echo "::set-output name=git-diff::$output"
 
       - name: Pushing up-to-date config file
