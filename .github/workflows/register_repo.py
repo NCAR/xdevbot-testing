@@ -45,4 +45,4 @@ if __name__ == "__main__":
 
     if config != original_config:
         with open(config_file, "w") as file_obj:
-            yaml.round_trip_dump(config, file_obj, indent=4, block_seq_indent=4)
+            yaml.round_trip_dump(config, file_obj, indent=2, block_seq_indent=2)
