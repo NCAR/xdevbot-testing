@@ -24,7 +24,8 @@ jobs:
       - name: Capture diff output
         id: diff 
         run: |
-          echo "::set-output name=git-diff::$(git --no-pager diff config.yaml)\n"
+          output=$(git --no-pager diff config.yaml)
+          echo "::set-output name=git-diff::$output"
 
       - name: Pushing up-to-date config file
         run: |
@@ -36,7 +37,7 @@ jobs:
       - name: Send a reply message to the issue
         uses: actions/github-script@0.9.0
         env:
-          STDOUT: "```${{join(steps.diff.outputs.*, '\n')}}```"
+          STDOUT: "```${{ steps.diff.outputs.git-diff }}```"
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
