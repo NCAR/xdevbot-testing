@@ -13,9 +13,10 @@ from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
 
-API_BASE_URL = 'https://api.github.com'
+API_BASE_URL = "https://api.github.com"
 
-XDEVBOT_MAIN_ENDPOINT = 'http://xdevbot.herokuapp.com/gh/testing'
+XDEVBOT_MAIN_ENDPOINT = "http://xdevbot.herokuapp.com/gh/testing"
+
 
 def register_repo(line, original_config, repos=[]):
     config = copy.deepcopy(original_config)
@@ -39,6 +40,7 @@ def register_repo(line, original_config, repos=[]):
 
     return config
 
+
 def configure(config_file="config.yaml"):
     repos = []
     with open(config_file) as resp:
@@ -58,85 +60,92 @@ def configure(config_file="config.yaml"):
 async def install_repo_webhook(
     repo,
     hooks_info={},
-    username=os.environ.get('GITHUB_USER', ''),
-    token=os.environ.get('GITHUB_TOKEN', ''),
+    username=os.environ.get("GH_USERNAME", ""),
+    token=os.environ.get("GH_TOKEN", ""),
 ):
 
     headers = {
-        'Accept': 'application/vnd.github.v3+json',
-        'Authorization': f'token {token}',
-        'User-Agent': username,
+        "Accept": "application/vnd.github.v3+json",
+        "Authorization": f"token {token}",
+        "User-Agent": username,
     }
 
-    url = f'{API_BASE_URL}/repos/{repo}/hooks'
+    url = f"{API_BASE_URL}/repos/{repo}/hooks"
 
     async with aiohttp.ClientSession(headers=headers) as client:
 
-        logging.info('Retrieving repository metadata.')
+        logging.info("Retrieving repository metadata.")
         async with client.get(url) as response:
             hooks = await response.json()
             if response.status == 200:
                 potl_hooks = []
                 for hook in hooks:
-                    if (set(hook['events']) == {'issues', 'pull_request'} 
-                    and hook['config']['url'] == XDEVBOT_MAIN_ENDPOINT 
-                    and hook['config']['content_type'] == 'json' 
-                    and hook['active']):
+                    if (
+                        set(hook["events"]) == {"issues", "pull_request"}
+                        and hook["config"]["url"] == XDEVBOT_MAIN_ENDPOINT
+                        and hook["config"]["content_type"] == "json"
+                        and hook["active"]
+                    ):
                         potl_hooks.append(hook)
-                
 
                 if len(potl_hooks) == 0:
-                    logging.info('Creating repository webhook.')
-                    request = dict(name='web', events=['issues', 'pull_request'],
-                    config=dict(url=XDEVBOT_MAIN_ENDPOINT, content_type='json'))
+                    logging.info("Creating repository webhook.")
+                    request = dict(
+                        name="web",
+                        events=["issues", "pull_request"],
+                        config=dict(url=XDEVBOT_MAIN_ENDPOINT, content_type="json"),
+                    )
                     async with client.post(url, json=request) as response:
                         main_hook = await response.json()
                         if response.status != 201:
-                            logging.error('Failed to create repository webhook.')
-                        
+                            logging.error("Failed to create repository webhook.")
+
                 elif len(potl_hooks) == 1:
-                    logging.info('Existing repository webhook found.')
+                    logging.info("Existing repository webhook found.")
                     main_hook = potl_hooks[0]
 
                 else:
-                    timestamps = [datetime.strptime(hook['updated_at'], '%Y-%m-%dT%H:%M:%SZ') for hook in potl_hooks]
-                    newest_timestamp, i_hook = max((t, i) for (i, t) in enumerate(timestamps))[1]
+                    timestamps = [
+                        datetime.strptime(hook["updated_at"], "%Y-%m-%dT%H:%M:%SZ")
+                        for hook in potl_hooks
+                    ]
+                    newest_timestamp, i_hook = max(
+                        (t, i) for (i, t) in enumerate(timestamps)
+                    )[1]
                     logging.info(
-                        f'Found {len(potl_hooks)} potential webhooks on the repository, '
-                        f'choosing most recent webhook at {newest_timestamp}.'
+                        f"Found {len(potl_hooks)} potential webhooks on the repository, "
+                        f"choosing most recent webhook at {newest_timestamp}."
                     )
                     main_hook = potl_hooks[i_hook]
 
                 hooks_info[repo] = main_hook
-                    
+
             else:
-                logging.error('Could not retrieve repository metadata.')
+                logging.error("Could not retrieve repository metadata.")
 
 
 if __name__ == "__main__":
-    
-    config_file = 'config.yaml'
+
+    config_file = "config.yaml"
     new_config, old_config, repos = configure(config_file)
     if new_config != old_config:
         with open(config_file, "w") as file_obj:
             yaml.round_trip_dump(new_config, file_obj, indent=2, block_seq_indent=2)
     hooks_info = {}
     loop = asyncio.get_event_loop()
-    #repos = {'NCAR/xdevbot-testing', 'NCAR/jupyterlab-pbs', 'NCAR/PyCECT'}
+    # repos = {'NCAR/xdevbot-testing', 'NCAR/jupyterlab-pbs', 'NCAR/PyCECT'}
     tasks = [loop.create_task(install_repo_webhook(repo, hooks_info)) for repo in repos]
     loop.run_until_complete(asyncio.gather(*tasks))
     successes = set(hooks_info.keys())
     failures = repos - successes
-    
-    with open('hooks_log.txt', 'w') as f:
+
+    with open("hooks_log.txt", "w") as f:
         if successes:
-            print('\n**Webhook was successfully installed on:**\n', file=f)
+            print("\n**Webhook was successfully installed on:**\n", file=f)
             for repo in successes:
-                print(f'- {repo}', file=f)
-       
+                print(f"- {repo}", file=f)
+
         if failures:
-            print('\n**Unable to install the webhook on:**\n', file=f)
+            print("\n**Unable to install the webhook on:**\n", file=f)
             for repo in failures:
-                print(f'- {repo}', file=f)
-        
-    
+                print(f"- {repo}", file=f)

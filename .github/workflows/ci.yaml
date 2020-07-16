@@ -17,12 +17,15 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Register new repository
+        env:
+          GH_USERNAME: ${{ secrets.GH_USERNAME }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
         run: |
           python -m pip install requests ruamel.yaml
           python .github/workflows/register_repositories.py
 
       - name: Capture diff output
-        id: diff 
+        id: diff
         shell: bash
         run: |
           git diff config.yaml > config.diff
