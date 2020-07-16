@@ -19,16 +19,13 @@ jobs:
       - name: Register new repository
         run: |
           python -m pip install requests ruamel.yaml
-          python .github/workflows/register_repo.py
+          python .github/workflows/register_repositories.py
 
       - name: Capture diff output
         id: diff 
         shell: bash
         run: |
           git diff config.yaml > config.diff
-          # output=$(git --no-pager diff config.yaml)
-          # echo $output
-          # echo ::set-env name=GIT_DIFF::"$output"
 
       - name: Pushing up-to-date config file
         run: |
@@ -43,8 +40,9 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs')
-            const payload = fs.readFileSync('config.diff', 'utf8')
-            const issue_reply = "👋 the following changes were made:\n\n" + "```bash\n" + `${payload}` + "```\n\n\n*** Check the master branch for latest changes. ***" 
+            const diff = fs.readFileSync('config.diff', 'utf8')
+            const logs = fs.readFileSync('hooks_log.txt', 'utf8')
+            const issue_reply = "👋 the following changes were made:\n\n" + "```bash\n" + `${diff}` + `${logs}` + "```\n\n*** Check the master branch for latest changes. ***" 
             // Send a reply message to the issue
             github.issues.createComment({
               issue_number: context.issue.number,
