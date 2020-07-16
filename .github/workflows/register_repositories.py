@@ -1,11 +1,9 @@
 import asyncio
-from typing import SupportsRound
 import aiohttp
 import logging
 import os
 
 import ruamel.yaml as yaml
-import requests
 import json
 import copy
 from datetime import datetime
@@ -17,43 +15,95 @@ API_BASE_URL = "https://api.github.com"
 XDEVBOT_MAIN_ENDPOINT = "http://xdevbot.herokuapp.com/gh/testing"
 
 
-def register_repo(line, original_config, repos=[]):
+def parse_line(line, original_config, repos={"remove": [], "add": []}):
     config = copy.deepcopy(original_config)
-    if line.startswith("/add-repo"):
-        parsed_info = line.split("/add-repo")[-1].strip().split()
+    valid_line = line.startswith("/add-repo") or line.startswith("/remove-repo")
+    if valid_line:
+        if line.startswith("/add-repo"):
+            split_on = "/add-repo"
+        else:
+            split_on = "/remove-repo"
+        parsed_info = line.split(split_on)[-1].strip().split()
         info = {}
         for item in parsed_info:
             x = item.strip().split(":")
             info[x[0]] = x[1]
 
-        info["repo_url"] = f"https://github.com/{info['repo']}"
-        request = requests.get(info["repo_url"])
-        if request.status_code != 200:
-            raise Exception(
-                f'{info["repo_url"]} does not appear to be a git repository.'
-            )
+        if split_on == "/add-repo":
+            if info["repo"] not in set(config[info["campaign"]]["repos"]):
+                config[info["campaign"]]["repos"].append(info["repo"])
+                repos["add"].append(info["repo"])
 
-        if info["repo"] not in set(config[info["campaign"]]["repos"]):
-            config[info["campaign"]]["repos"].append(info["repo"])
-            repos.append(info["repo"])
+        else:
+            try:
+                config[info["campaign"]]["repos"].remove(info["repo"])
+            except ValueError:
+                pass
+            finally:
+                repos["remove"].append(info["repo"])
 
     return config
 
 
 def configure(config_file="config.yaml"):
-    repos = []
+    repos = {"remove": [], "add": []}
     with open(config_file) as resp:
         original_config = yaml.safe_load(resp)
 
     with open(os.environ["GITHUB_EVENT_PATH"], "r") as f:
         event_payload = json.load(f)
     comment = event_payload["issue"]["body"]
-    # comment = "Foo\n/add-repo repo:NCAR/integral campaign:analysis\n/add-repo repo:NCAR/test campaign:core\nbar\n/add-repo repo:NCAR/xdevbot-testing campaign:core"
+    # comment = """
+    # Foo\n/add-repo repo:NCAR/integral campaign:analysis\n/add-repo repo:NCAR/test campaign:core\nbar\n/remove-repo repo:NCAR/xdevbot-testing campaign:core\n/add-repo repo:NCAR/xdev-bot-testing campaign:core\n
+    # \n/remove-repo repo:NCAR/jupyterlab-pbs campaign:platform
+    # """
     comment = comment.splitlines()
     config = copy.deepcopy(original_config)
     for line in comment:
-        config = register_repo(line, config, repos)
-    return config, original_config, set(repos)
+        config = parse_line(line, config, repos)
+    return config, original_config, repos
+
+
+async def delete_repo_webhook(
+    repo,
+    hooks_info={},
+    username=os.environ.get("GH_USERNAME", ""),
+    token=os.environ.get("GH_TOKEN", ""),
+):
+
+    headers = {
+        "Accept": "application/vnd.github.v3+json",
+        "Authorization": f"token {token}",
+        "User-Agent": username,
+    }
+
+    url = f"{API_BASE_URL}/repos/{repo}/hooks"
+
+    async with aiohttp.ClientSession(headers=headers) as client:
+
+        logging.info("Retrieving repository webhooks metadata.")
+        async with client.get(url) as response:
+            hooks = await response.json()
+            if response.status == 200:
+                potl_hooks = []
+                for hook in hooks:
+                    if (
+                        set(hook["events"]) == {"issues", "pull_request"}
+                        and hook["config"]["url"] == XDEVBOT_MAIN_ENDPOINT
+                        and hook["config"]["content_type"] == "json"
+                    ):
+                        potl_hooks.append(hook)
+
+                if potl_hooks:
+                    for hook in potl_hooks:
+                        logging.info("Deleting repository webhook.")
+                        url = f"{url}/{hook['id']}"
+                        async with client.delete(url) as response:
+                            if response.status != 204:
+                                logging.error("Failed to delete repository webhook.")
+                            else:
+                                logging.info("Deleted repository webhook.")
+                                hooks_info[repo] = url
 
 
 async def install_repo_webhook(
@@ -73,7 +123,7 @@ async def install_repo_webhook(
 
     async with aiohttp.ClientSession(headers=headers) as client:
 
-        logging.info("Retrieving repository metadata.")
+        logging.info("Retrieving repository webhooks metadata.")
         async with client.get(url) as response:
             hooks = await response.json()
             if response.status == 200:
@@ -130,21 +180,43 @@ if __name__ == "__main__":
     if new_config != old_config:
         with open(config_file, "w") as file_obj:
             yaml.round_trip_dump(new_config, file_obj, indent=2, block_seq_indent=2)
-    hooks_info = {}
+
+    added_hooks = {}
+    removed_hooks = {}
     loop = asyncio.get_event_loop()
-    # repos = {'NCAR/xdevbot-testing', 'NCAR/jupyterlab-pbs', 'NCAR/PyCECT'}
-    tasks = [loop.create_task(install_repo_webhook(repo, hooks_info)) for repo in repos]
+    tasks = [
+        loop.create_task(install_repo_webhook(repo, added_hooks))
+        for repo in repos["add"]
+    ] + [
+        loop.create_task(delete_repo_webhook(repo, removed_hooks))
+        for repo in repos["remove"]
+    ]
     loop.run_until_complete(asyncio.gather(*tasks))
-    successes = set(hooks_info.keys())
-    failures = repos - successes
+
+    added_successes = set(added_hooks.keys())
+    added_failures = set(repos["add"]) - added_successes
+    removed_successes = set(removed_hooks.keys())
+    removed_failures = set(repos["remove"]) - removed_successes
 
     with open("hooks_log.txt", "w") as f:
-        if successes:
+        print("\n#### 1. Additions", file=f)
+        if added_successes:
             print("\n**Webhook was successfully installed on:**\n", file=f)
-            for repo in successes:
+            for repo in added_successes:
                 print(f"- {repo}", file=f)
 
-        if failures:
+        if added_failures:
             print("\n**Unable to install the webhook on:**\n", file=f)
-            for repo in failures:
+            for repo in added_failures:
+                print(f"- {repo}", file=f)
+
+        print("\n#### 2. Deletions", file=f)
+        if removed_successes:
+            print("\n**Webhook was successfully removed on:**\n", file=f)
+            for repo in removed_successes:
+                print(f"- {repo}", file=f)
+
+        if removed_failures:
+            print("\n**Unable to uninstall the webhook on:**\n", file=f)
+            for repo in removed_failures:
                 print(f"- {repo}", file=f)
