@@ -25,9 +25,10 @@ jobs:
         id: diff 
         shell: bash
         run: |
-          output=$(git --no-pager diff config.yaml)
-          echo $output
-          echo ::set-env name=GIT_DIFF::"$output"
+          git diff config.yaml > config.diff
+          # output=$(git --no-pager diff config.yaml)
+          # echo $output
+          # echo ::set-env name=GIT_DIFF::"$output"
 
       - name: Pushing up-to-date config file
         run: |
@@ -38,19 +39,17 @@ jobs:
 
       - name: Send a reply message to the issue
         uses: actions/github-script@0.9.0
-        env:
-          STDOUT: "```${{ env.GIT_DIFF }}```"
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs')
-            const payload = JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8'))
-            // const repo_and_campaign = payload.issue.body.split('/add-repo')[1].trim()
+            const payload = fs.readFileSync('config.diff', 'utf8'))
             // const issue_reply = `👋 Added ${repo_and_campaign} to the configuration file! Check the master branch for latest changes.`
+            const issue_reply = `Changes made:\n```bash\n${payload}``` `
             // Send a reply message to the issue
             github.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: process.env.STDOUT
+              body: issue_reply
             })
