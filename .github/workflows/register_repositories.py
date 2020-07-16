@@ -6,7 +6,6 @@ import os
 
 import ruamel.yaml as yaml
 import requests
-import sys
 import json
 import copy
 from datetime import datetime
@@ -46,10 +45,10 @@ def configure(config_file="config.yaml"):
     with open(config_file) as resp:
         original_config = yaml.safe_load(resp)
 
-    # with open(os.environ["GITHUB_EVENT_PATH"], "r") as f:
-    #     event_payload = json.load(f)
-    # comment = event_payload["issue"]["body"]
-    comment = "Foo\n/add-repo repo:NCAR/integral campaign:analysis\n/add-repo repo:NCAR/test campaign:core\nbar\n/add-repo repo:NCAR/xdevbot-testing campaign:core"
+    with open(os.environ["GITHUB_EVENT_PATH"], "r") as f:
+        event_payload = json.load(f)
+    comment = event_payload["issue"]["body"]
+    # comment = "Foo\n/add-repo repo:NCAR/integral campaign:analysis\n/add-repo repo:NCAR/test campaign:core\nbar\n/add-repo repo:NCAR/xdevbot-testing campaign:core"
     comment = comment.splitlines()
     config = copy.deepcopy(original_config)
     for line in comment:
