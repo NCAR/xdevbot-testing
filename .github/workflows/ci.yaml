@@ -45,7 +45,7 @@ jobs:
             const fs = require('fs')
             const diff = fs.readFileSync('config.diff', 'utf8')
             const logs = fs.readFileSync('hooks_log.md', 'utf8')
-            const issue_reply = "👋 the following changes were made:\n\n" + "```bash\n" + `${diff}` + "```\n" + `${logs}`+ "***Check the master branch for latest changes.***" 
+            const issue_reply = "👋 the following changes were made:\n\n" + "```bash\n" + `${diff}` + "```\n" + `${logs}`+ "\n\n***Check the master branch for latest changes.***" 
             // Send a reply message to the issue
             github.issues.createComment({
               issue_number: context.issue.number,
