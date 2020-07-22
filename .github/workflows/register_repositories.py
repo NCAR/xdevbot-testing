@@ -1,12 +1,12 @@
 import asyncio
-import aiohttp
+import copy
+import json
 import logging
 import os
-
-import ruamel.yaml as yaml
-import json
-import copy
 from datetime import datetime
+
+import aiohttp
+import ruamel.yaml as yaml
 
 logging.basicConfig(level=logging.INFO)
 
@@ -17,13 +17,12 @@ XDEVBOT_MAIN_ENDPOINT = "http://xdevbot.herokuapp.com/gh/testing"
 
 def parse_line(line, original_config, repos={"remove": [], "add": []}):
     config = copy.deepcopy(original_config)
-    valid_line = line.startswith("/add-repo") or line.startswith("/remove-repo")
+    add_cmd = "/add-repo"
+    remove_cmd = "/remove-repo"
+    valid_line = add_cmd in line or remove_cmd in line
     if valid_line:
-        if line.startswith("/add-repo"):
-            split_on = "/add-repo"
-        else:
-            split_on = "/remove-repo"
-        parsed_info = line.split(split_on)[-1].strip().split()
+        split_on = add_cmd if add_cmd in line else remove_cmd
+        parsed_info = line.split(split_on)[-1].strip().split()[:2]
         info = {}
         for item in parsed_info:
             x = item.strip().split(":")
@@ -50,13 +49,13 @@ def configure(config_file="config.yaml"):
     with open(config_file) as resp:
         original_config = yaml.safe_load(resp)
 
-    with open(os.environ["GITHUB_EVENT_PATH"], "r") as f:
-        event_payload = json.load(f)
-    comment = event_payload["issue"]["body"]
-    # comment = """
-    # Foo\n/add-repo repo:NCAR/integral campaign:analysis\n/add-repo repo:NCAR/test campaign:core\nbar\n/remove-repo repo:NCAR/xdevbot-testing campaign:core\n/add-repo repo:NCAR/xdev-bot-testing campaign:core\n
-    # \n/remove-repo repo:NCAR/jupyterlab-pbs campaign:platform
-    # """
+    # with open(os.environ['GITHUB_EVENT_PATH'], 'r') as f:
+    #     event_payload = json.load(f)
+    # comment = event_payload['issue']['body']
+    comment = """
+    Foo\n- /add-repo repo:NCAR/integral campaign:analysis\n- /add-repo repo:NCAR/test campaign:core\nbar\n- /remove-repo repo:NCAR/xdevbot-testing campaign:core\n/add-repo repo:NCAR/xdev-bot-testing campaign:core\n
+    \n- /remove-repo repo:NCAR/jupyterlab-pbs campaign:platform
+    """
     comment = comment.splitlines()
     config = copy.deepcopy(original_config)
     for line in comment:
@@ -173,6 +172,10 @@ async def install_repo_webhook(
                 logging.error("Could not retrieve repository metadata.")
 
 
+def format_repo_url(repo):
+    return f"[{repo}](https://github.com/{repo})"
+
+
 if __name__ == "__main__":
 
     config_file = "config.yaml"
@@ -184,39 +187,54 @@ if __name__ == "__main__":
     added_hooks = {}
     removed_hooks = {}
     loop = asyncio.get_event_loop()
-    tasks = [
+    add_tasks = [
         loop.create_task(install_repo_webhook(repo, added_hooks))
         for repo in repos["add"]
-    ] + [
+    ]
+    remove_tasks = [
         loop.create_task(delete_repo_webhook(repo, removed_hooks))
         for repo in repos["remove"]
     ]
-    loop.run_until_complete(asyncio.gather(*tasks))
+    loop.run_until_complete(asyncio.gather(*add_tasks))
+    loop.run_until_complete(asyncio.gather(*remove_tasks))
 
     added_successes = set(added_hooks.keys())
     added_failures = set(repos["add"]) - added_successes
     removed_successes = set(removed_hooks.keys())
     removed_failures = set(repos["remove"]) - removed_successes
 
-    with open("hooks_log.txt", "w") as f:
+    with open("hooks_log.md", "w") as f:
         print("\n#### 1. Additions", file=f)
         if added_successes:
-            print("\n**Webhook was successfully installed on:**\n", file=f)
+            print(
+                "\n**The webhook was successfully installed on the following repositories:**\n",
+                file=f,
+            )
             for repo in added_successes:
-                print(f"- {repo}", file=f)
+                print(f"- {format_repo_url(repo)}", file=f)
 
         if added_failures:
-            print("\n**Unable to install the webhook on:**\n", file=f)
+            print(
+                "\n**Unable to install the webhook on the following repositories:**\n",
+                file=f,
+            )
             for repo in added_failures:
-                print(f"- {repo}", file=f)
+                print(f"- {format_repo_url(repo)}", file=f)
 
         print("\n#### 2. Deletions", file=f)
         if removed_successes:
-            print("\n**Webhook was successfully removed on:**\n", file=f)
+            print(
+                "\n**The webhook was successfully removed on the following repositories:**\n",
+                file=f,
+            )
             for repo in removed_successes:
-                print(f"- {repo}", file=f)
+                print(f"- {format_repo_url(repo)}", file=f)
 
         if removed_failures:
-            print("\n**Unable to uninstall the webhook on:**\n", file=f)
+            print(
+                "\n**Unable to uninstall the webhook on the following repositories:**\n",
+                file=f,
+            )
             for repo in removed_failures:
-                print(f"- {repo}", file=f)
+                print(f"- {format_repo_url(repo)}", file=f)
+
