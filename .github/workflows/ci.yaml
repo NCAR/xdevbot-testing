@@ -16,10 +16,9 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v2
 
-      # - name: Create Clean Branch
-      #   run: |
-      #     git checkout --orphan xdevbot
-      #     git rm --cached -r .
+      - name: Checkout xdevbot Branch
+        run: |
+          git checkout  xdevbot
 
       - name: Register new repository
         env:
