@@ -49,7 +49,7 @@ jobs:
           script: |
             const fs = require('fs')
             const logs = fs.readFileSync('hooks_log.md', 'utf8')
-            const issue_reply = "👋 the following changes were made:\n" + `${logs}`+ "\n\n***Check the [xdevbot branch](https://github.com/NCAR/xdevbot-testing/blob/xdevbot/xdevbot.yaml) for latest changes.***" 
+            const issue_reply = "The following changes were made:\n" + `${logs}`+ "\n\n***Check the [xdevbot branch](https://github.com/NCAR/xdevbot-testing/blob/xdevbot/xdevbot.yaml) for latest configuration file changes.***" 
             // Send a reply message to the issue
             github.issues.createComment({
               issue_number: context.issue.number,
