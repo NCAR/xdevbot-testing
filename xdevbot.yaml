@@ -1,0 +1,31 @@
+analysis:
+  repos:
+    - NCAR/integral
+  url: https://github.com/NCAR/xdev/projects/6
+checkpoint:
+  repos:
+  url: https://github.com/NCAR/xdev/projects/7
+core:
+  repos:
+    - NCAR/xdev
+    - NCAR/xdevbot-testing
+    - NCAR/test
+    - NCAR/xdevbot-test
+  url: https://github.com/NCAR/xdev/projects/2
+eocb:
+  repos:
+  url: https://github.com/NCAR/xdev/projects/3
+ingestion:
+  repos:
+    - intake/intake-esm
+  url: https://github.com/NCAR/xdev/projects/5
+platform:
+  repos: []
+  url: https://github.com/NCAR/xdev/projects/9
+publication:
+  repos:
+    - NCAR/ncar-aws-binder
+  url: https://github.com/NCAR/xdev/projects/8
+search:
+  repos:
+  url: https://github.com/NCAR/xdev/projects/4
